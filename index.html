@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/brython@3.12.0/brython.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/brython@3.12.0/brython_stdlib.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
+    </style>
+</head>
+<body onload="brython()">
+
+<canvas id="antigravityCanvas"></canvas>
+
+<script type="python">
+from browser import document, window, timer
+import math
+import random
+
+canvas = document["antigravityCanvas"]
+ctx = canvas.getContext("2d")
+
+# Setup Dimensions
+width = canvas.width = window.innerWidth
+height = canvas.height = window.innerHeight
+
+# Configuration (from your React props)
+CONFIG = {
+    'count': 300,
+    'magnetRadius': 100,
+    'ringRadius': 80,
+    'lerpSpeed': 0.1,
+    'color': '#FF9FFC',
+    'waveSpeed': 0.4,
+    'waveAmplitude': 10
+}
+
+mouse = {'x': width/2, 'y': height/2}
+particles = []
+
+class Particle:
+    def __init__(self):
+        self.mx = random.uniform(0, width)
+        self.my = random.uniform(0, height)
+        self.cx, self.cy = self.mx, self.my
+        self.t = random.random() * 100
+        self.speed = 0.01 + random.random() / 50
+        self.radius_offset = (random.random() - 0.5) * 10
+
+    def update(self):
+        self.t += self.speed
+        
+        dx = self.mx - mouse['x']
+        dy = self.my - mouse['y']
+        dist = math.sqrt(dx*dx + dy*dy)
+
+        target_x, target_y = self.mx, self.my
+
+        if dist < CONFIG['magnetRadius']:
+            angle = math.atan2(dy, dx)
+            wave = math.sin(self.t * CONFIG['waveSpeed']) * CONFIG['waveAmplitude']
+            current_ring = CONFIG['ringRadius'] + wave + self.radius_offset
+            
+            target_x = mouse['x'] + math.cos(angle) * current_ring
+            target_y = mouse['y'] + math.sin(angle) * current_ring
+
+        # Smooth movement (Lerp)
+        self.cx += (target_x - self.cx) * CONFIG['lerpSpeed']
+        self.cy += (target_y - self.cy) * CONFIG['lerpSpeed']
+
+    def draw(self):
+        ctx.fillStyle = CONFIG['color']
+        ctx.beginPath()
+        ctx.arc(self.cx, self.cy, 2, 0, math.pi * 2)
+        ctx.fill()
+
+# Initialize particles
+for _ in range(CONFIG['count']):
+    particles.append(Particle())
+
+def on_mouse_move(ev):
+    mouse['x'] = ev.clientX
+    mouse['y'] = ev.clientY
+
+document.bind("mousemove", on_mouse_move)
+
+def animate(i):
+    # Clear canvas
+    ctx.clearRect(0, 0, width, height)
+    
+    for p in particles:
+        p.update()
+        p.draw()
+        
+    window.requestAnimationFrame(animate)
+
+window.requestAnimationFrame(animate)
+</script>
+</body>
+</html>
